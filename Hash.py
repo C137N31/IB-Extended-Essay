@@ -56,8 +56,9 @@ class HashTable: #Hash Table Specification
             j = 0
             while self.bucket[index] is not None:
                 j += 1
-                # quadratic probing if step == 0, else linear probing
-                index = index+j*j if self.step == 0 else index+self.step
+                # quadratic probing if step = 0, step = (index0 + j^2) - (index0 + (j-1)^2) = j^2 - (j-1)^2 = 2*j-1
+                # linear probing if step > 0
+                index = index+2*j-1 if self.step == 0 else index+self.step
                 index = index % self.size
             self.bucket[index] = key
             
@@ -74,8 +75,9 @@ class HashTable: #Hash Table Specification
             j = 0
             while self.bucket[index] != key:
                 j += 1
-                # quadratic probing if step == 0, else linear probing
-                index = index+j*j if self.step == 0 else index+self.step
+                # quadratic probing if step = 0, step = (index0 + j^2) - (index0 + (j-1)^2) = j^2 - (j-1)^2 = 2*j-1
+                # linear probing if step > 0
+                index = index+2*j-1 if self.step == 0 else index+self.step
                 index = index % self.size
             return j
             
@@ -167,4 +169,4 @@ def main():
         file.close()
 
 if __name__ == '__main__':
-    main()      
+    main()
