@@ -96,29 +96,20 @@ class HashTable: #Hash Table Specification
         return collison_list
 
 def main():
-    N = 10000  # raw dataset size
+    N = 10000 # raw dataset size
     roundN = 100 # total rounds to test
     stepN = 1000 # total steps to test
     letters = string.ascii_letters + string.digits
 
     # test different M for modular and mulplicative funcation
-    operations = (
-        [9999991,"mod"], 
-        [19997,  "mod"],
-        [11113,  "mod"],
-        [10193,  "mod"],
-        [10037,  "mod"],
-        [10007,  "mod"],
-        [9999991,"mul"],
-        [19997,  "mul"],
-        [11113,  "mul"],
-        [10193,  "mul"],
-        [10037,  "mul"],
-        [10007,  "mul"]
-        )
+    operations = ([9999991,"mod"], [19997,  "mod"], [11113,  "mod"], [10193,  "mod"], [10037,  "mod"], [10007,  "mod"],
+                  [9999991,"mul"], [19997,  "mul"], [11113,  "mul"], [10193,  "mul"], [10037,  "mul"], [10007,  "mul"])
 
     # repeat round for a group of operations and steps
     for r in range(roundN): 
+        # reset round initial time
+        round_initial_time = time.time()
+
         # create a new raw dataset for each new round
         keys = []
         for i in range(N):
@@ -126,9 +117,18 @@ def main():
 
         # create a new output csv file for each new round
         file = open(f"/Project/Hash/Hash{str(r).zfill(3)}.csv","a")
-        
-        # reset round initial time
-        round_initial_time = time.time()
+        file.write("Step,Mo1InTm,Mo1RtTm,Mo1CMed,Mo1CAvg,Mo1CStd"
+                     + ",Mo2InTm,Mo2RtTm,Mo2CMed,Mo2CAvg,Mo2CStd"
+                     + ",Mo3InTm,Mo3RtTm,Mo3CMed,Mo3CAvg,Mo3CStd"
+                     + ",Mo4InTm,Mo4RtTm,Mo4CMed,Mo4CAvg,Mo4CStd"
+                     + ",Mo5InTm,Mo5RtTm,Mo5CMed,Mo5CAvg,Mo5CStd"
+                     + ",Mo6InTm,Mo6RtTm,Mo6CMed,Mo6CAvg,Mo6CStd"
+                     + ",Mu1InTm,Mu1RtTm,Mu1CMed,Mu1CAvg,Mu1CStd"
+                     + ",Mu2InTm,Mu2RtTm,Mu2CMed,Mu2CAvg,Mu2CStd"
+                     + ",Mu3InTm,Mu3RtTm,Mu3CMed,Mu3CAvg,Mu3CStd"
+                     + ",Mu4InTm,Mu4RtTm,Mu4CMed,Mu4CAvg,Mu4CStd"
+                     + ",Mu5InTm,Mu5RtTm,Mu5CMed,Mu5CAvg,Mu5CStd"
+                     + ",Mu6InTm,Mu6RtTm,Mu6CMed,Mu6CAvg,Mu6CStd")
 
         # step < 0: chaining; 
         # step = 0: quadratic probing; 
