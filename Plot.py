@@ -6,8 +6,8 @@ def main():
     i2 = 1001     # end row as Excel index-1
     od = pd.read_csv("/Project/Hash/Hash01.csv")
 
-    plt.plot(od.Step[i1:i2], [od.Mo1RtTmMed[0] for i in range(i1,i2)], label = "Mo1RtTmMed-Chaining")
-    plt.plot(od.Step[i1:i2], [od.Mo1RtTmMed[1] for i in range(i1,i2)], label = "Mo1RtTmMed-Quadratic")
+    plt.plot(od.Step[i1:i2], [od.Mo1RtTmMed[0] for i in range(i1,i2)], label = "Mo1RtTmMed-Quadratic")
+    plt.plot(od.Step[i1:i2], [od.Mo1RtTmMed[1] for i in range(i1,i2)], label = "Mo1RtTmMed-Chaining")
     plt.plot(od.Step[i1:i2], od.Mo1RtTmMed[i1:i2], label = "Mo1RtTmMed")
     plt.plot(od.Step[i1:i2], od.Mo2RtTmMed[i1:i2], label = "Mo2RtTmMed")
     plt.plot(od.Step[i1:i2], od.Mo3RtTmMed[i1:i2], label = "Mo3RtTmMed")
