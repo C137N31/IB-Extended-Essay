@@ -4,7 +4,7 @@ def main():
     nFile = 100 # total csv files
     R = 1001 # total rows in a csv file
     
-    rd = pd.concat([pd.read_csv(f"/Project/Hash/Hash1{str(i).zfill(2)}.csv") for i in range(nFile)], ignore_index=True)        
+    rd = pd.concat([pd.read_csv(f"/Project/Hash/Hash{str(i).zfill(3)}.csv") for i in range(nFile)], ignore_index=True)        
 
     outd = pd.concat([pd.DataFrame([[rd.Step.iloc[i], 
                                      
