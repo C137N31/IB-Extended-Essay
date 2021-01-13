@@ -11,6 +11,7 @@ class HashTable: #Hash Table Specification
         self.size = bs # Prime number of bucket size
         self.hf = hf # Hash function: modular or multiplicative
         self.step =  step # < -1: double hash / -1: quadratic probing / 0: chaining / > 0: linear probing
+        self.max_probing = bs # max probing to quit
         
         self.ch = "ch" if step == 0 else "lp" # Collision handling strategy
         self.mf = (sqrt(5)-1)/2 # (3^40)/(2^64) Use golden ratio as mulplicative factor
@@ -33,191 +34,211 @@ class HashTable: #Hash Table Specification
     def memory_usage(self):
         return getsizeof(self.bucket)
 
-    # hash code: convert string to integer
-    def hash_number(self, key):
-        #hash_num = 0
+    # hash key: convert key string to a integer for hash function input
+    def hash_key(self, key):
+        #hash_key = 0
         #for i in range(len(key)):
-        #    hash_num += ord(key[i]) * (10**i)
-        #return hash_num
+        #    hash_key += ord(key[i]) * (10**i)
+        #return hash_key
         return key
 
     # hash function, return slot
     def hash_function(self, key):
-        hash_num = self.hash_number(key)
-        slot = hash_num % self.size if self.hf == "mod" else floor( self.size * modf(hash_num*self.mf)[0] )
+        hash_key = self.hash_key(key)
+        slot = hash_key % self.size if self.hf == "mod" else floor( self.size * modf(hash_key*self.mf)[0] )
         return slot
 
     # double hash function: slot = slot0 + j * hf2(key,j)
     # must > 0 for open addressing / closed hashing
-    def double_hash_function(self, key, chain):
-        hash_num = self.hash_number(key)
+    def double_hash_function(self, key, j):
+        hash_key = self.hash_key(key)
 
-        if self.step > 0: # linear probing
-            return self.step
-        elif self.step == -1: # quadratic probing
-            return chain
-        elif self.step in [-2,-3]: # double hash modular function
-            return 1 + hash_num % (self.size-2) # better if self.size and self.size-2 are twin primes
-        elif self.step in [-4,-5]: # double hash mulplicative function
-            return ceil((self.size-2) * modf(hash_num * self.mf)[0])
+        if self.step > 0 :     # linear probing
+            return self.step   
+        elif self.step == -1 : # classic quadratic probing
+            return j           
+        elif self.step == -2 : # faster quadratic probing
+            return j           
+        elif self.step == -3 : # double hash modular function   ###    better if self.size and self.size-2 are twin primes
+            return 1 + hash_key % (self.size-2)     
+        elif self.step == -4 : # double hash muplicative function
+            return ceil((self.size-2) * modf(hash_key * self.mf)[0]) 
+        elif self.step == -5 : # classic quadratic probing with a large starting step
+            return j           
+        elif self.step == -6 : # faster quadratic probing with a large starting step
+            return j           
+        elif self.step == -7 : # double hash modular function with quadratic probing
+            return 1 + hash_key % (self.size-2) 
+        elif self.step == -8 : # double hash muplicative function with quadratic probing
+            return ceil((self.size-2) * modf(hash_key * self.mf)[0])
         else:
             raise Exception(f"Invalid collision handling strategy! Check the step input.")
 
+    # find next slot based on current slot and j-th probing
+    # Warning: fixed-step (-4,-3,>0) always success if it is coprime to bucket size; however, j-varied-step (-8,-7,-6,-5,-2,-1) may fail after many probings in small bucket
+    def next_slot(self, slot_now, j, step0): 
+        if self.step > 0 :                      # linear probing
+            slot_next = slot_now + self.step    # hf2(key,j) = step    => step_j = (slot0 + j*step) - (slot0 + (j-1)*step) = step
+        elif self.step == -1 :                  # classic quadratic probing
+            slot_next = slot_now + 2*j-1        # hf2(key,j) = j       => step_j = (slot0 + j^2) - (slot0 + (j-1)^2) = j^2 - (j-1)^2 = 2*j-1
+        elif self.step == -2 :                  # faster quadratic probing
+            slot_next = slot_now + j            # hf2(key,j) = (j+1)/2 => step_j = (slot0 + j*(j+1)/2) - (slot0 + (j-1)*(j-1+1)/2) = j
+        elif self.step in [-3,-4] :             # double hash function
+            slot_next = slot_now + step0        # double hash without j in hf2(key,j) = step0: it is just a key-varied-step linear probing
+        elif self.step == -5 :                  # classic quadratic probing with a large starting step
+            slot_next = slot_now + 2*j + 999    # hf2(key,j) = j + stepK
+        elif self.step == -6 :                  # faster quadratic probing with a large starting step
+            slot_next = slot_now + j + 1000     # hf2(key,j) = (j+1)/2 + stepK
+        elif self.step in [-7,-8] :             # double hash function with quadratic probing
+            slot_next = slot_now + step0 + j    # double hash with j in hf2(key,j) = step0 + (j+1)/2
+        
+        return slot_next % self.size
+
     # insert key, return bucket slot
-    def __setitem__(self, key): 
-        slot = self.hash_function(key) # slot0
+    def __setitem__(self, key, hash_key): 
+        slot = self.hash_function(hash_key)
 
         if self.ch == "ch":
             self.bucket[slot].append(key)
+            return slot
         else:
-            j = 0 # chain counting
-            step0 = self.double_hash_function(key,j)
+            step0 = self.double_hash_function(key,0) # key-varied-step for double hash
 
-            while self.bucket[slot] is not None:
-                j += 1
-                if j == self.size :
-                    raise Exception(f"Insertion failed after {j} probing for key={key}.")
+            for j in range(1,self.max_probing): # chain counting
+                if self.bucket[slot] is None:
+                    self.bucket[slot] = key
+                    return slot
 
-                # slot = slot0 + j * hf2(key,j)
-                # linear probing    if step  >  0: hf2(key,j) = step            => step_j = (slot0 + j*step) - (slot0 + (j-1)*step) = step
-                # quadratic probing if step  = -1: hf2(key,j) = j               => step_j = (slot0 + j^2) - (slot0 + (j-1)^2) = j^2 - (j-1)^2 = 2*j-1
-                # double hash       if step  < -1: hf2(key,j) = step0 + (j+1)/2 => step_j = (slot0 + j*(step0+(j+1)/2)) - (slot0 + (j-1)*(step0+(j-1+1)/2)) = step0 + j
-                if self.step > 0 : # linear probing
-                    slot += self.step
-                elif self.step == -1 : # quadratic probing
-                    slot += 2*j-1
-                elif self.step in [-2,-4]: # double hash without j in hf2(key,j) = step0: it is just key-varied linear probing
-                    slot += step0
-                elif self.step in [-3,-5]: # double hash with j in hf2(key,j) = step0 + (j+1)/2
-                    slot += step0 + j
-                else:
-                    raise Exception(f"Invalid collision handling strategy! Check the step input.")
-                
-                slot = slot % self.size
+                slot = self.next_slot(slot, j, step0)
             
-            self.bucket[slot] = key
+            raise Exception(f"Insertion failed after {j} probing for (key, hash_key) = ({key}, {hash_key}).")
             
-        return slot
 
     # query key, return chain location
-    def __getitem__(self, key): 
-        slot = self.hash_function(key) # slot0
+    def __getitem__(self, key, hash_key): 
+        slot = self.hash_function(hash_key)
 
         if self.ch == "ch":
-            for chain in range(len(self.bucket[slot])):
-                if self.bucket[slot][chain] == key:
-                    return chain
+            for j in range(len(self.bucket[slot])):
+                if self.bucket[slot][j] == key:
+                    return j
         else:
-            j = 0 # chain counting
-            step0 = self.double_hash_function(key,j)
+            step0 = self.double_hash_function(key,0) # key-varied-step for double hash
 
-            while self.bucket[slot] != key:
-                j += 1
-                if j == self.size :
-                    raise Exception(f"Retrieval failed after {j} probing for key={key}.")
+            for j in range(1,self.max_probing): # chain counting
+                if self.bucket[slot] == key:
+                    return j
 
-                if self.step > 0 : # linear probing
-                    slot += self.step
-                elif self.step == -1 : # quadratic probing
-                    slot += 2*j-1
-                elif self.step in [-2,-4]: # double hash without j in hf2(key,j) = step0: it is just key-varied linear probing
-                    slot += step0
-                elif self.step in [-3,-5]: # double hash with j in hf2(key,j) = step0 + (j+1)/2
-                    slot += step0 + j
-                else:
-                    raise Exception(f"Invalid collision handling strategy! Check the step input.")
+                slot = self.next_slot(slot, j, step0)
 
-                slot = slot % self.size
-
-            return j
+            raise Exception(f"Retrieval failed after {j} probing for (key, hash_key) = ({key}, {hash_key}).")
 
     # return slot for each key
     def insert(self, keys):
         slot_list = []
-        for key in keys:
-            slot_list.append(self.__setitem__(key))
+        for i in range(len(keys)):
+            slot_list.append(self.__setitem__(i,keys[i]))
         return slot_list
 
     # return collision / chain length for each key
     def retrieve(self, keys):
         chain_list = []
-        for key in keys:
-            chain_list.append(self.__getitem__(key))
+        for i in range(len(keys)):
+            chain_list.append(self.__getitem__(i,keys[i]))
         return chain_list
 
 def main():
     starting_time = time.time()
-    N       = 10000 # raw dataset size
-    roundN  = 25    # total rounds to test
-    stepN   = 100   # total steps to test
-    stepS   = -5    # starting step
+    N             = 10000 # raw dataset size
+    roundN        = 25    # repeat round for average statistics
+    hk_range      = [500, 1000, 2500, 5000, 7500, 10000, 20000, 40000, 20000000] # create hash_key from extremely uneven to even distribution
+    datasetN      = len(hk_range)     # total datasets to test
+    stepN         = 100   # total steps to test
+    stepS         = -4    # starting step
+    hf_list       = ["mod", "mul"] # hash function list
+    bs_list       = [9999973, 19993, 11119, 10429, 10039, 10009] # bucket size list
 
-    # test different M for modular and mulplicative funcation
-    operations = ([9999973, "mod"], [19993, "mod"], [11119, "mod"], [10429, "mod"], [10039, "mod"], [10009, "mod"],
-                  [9999973, "mul"], [19993, "mul"], [11119, "mul"], [10429, "mul"], [10039, "mul"], [10009, "mul"])
-
-    # repeat round for a group of operations and steps
-    for r in range(roundN): 
+    # repeat test for a group of operations and steps
+    for r in range(roundN):
         # reset round initial time
         round_initial_time = time.time()
-
-        # create a new raw dataset for each new round
-        keys = random.sample(range(1, N*N), N)
-
-        # create a new output csv file for each new round
-        file = open(f"/Project/Hash/Hash{str(r).zfill(3)}.csv","a")
-        file.write("Step,Mo1InTm,Mo1RtTm,Mo1CMed,Mo1CMax,Mo1CAvg,Mo1CStd"
-                     + ",Mo2InTm,Mo2RtTm,Mo2CMed,Mo2CMax,Mo2CAvg,Mo2CStd"
-                     + ",Mo3InTm,Mo3RtTm,Mo3CMed,Mo3CMax,Mo3CAvg,Mo3CStd"
-                     + ",Mo4InTm,Mo4RtTm,Mo4CMed,Mo4CMax,Mo4CAvg,Mo4CStd"
-                     + ",Mo5InTm,Mo5RtTm,Mo5CMed,Mo5CMax,Mo5CAvg,Mo5CStd"
-                     + ",Mo6InTm,Mo6RtTm,Mo6CMed,Mo6CMax,Mo6CAvg,Mo6CStd"
-                     + ",Mu1InTm,Mu1RtTm,Mu1CMed,Mu1CMax,Mu1CAvg,Mu1CStd"
-                     + ",Mu2InTm,Mu2RtTm,Mu2CMed,Mu2CMax,Mu2CAvg,Mu2CStd"
-                     + ",Mu3InTm,Mu3RtTm,Mu3CMed,Mu3CMax,Mu3CAvg,Mu3CStd"
-                     + ",Mu4InTm,Mu4RtTm,Mu4CMed,Mu4CMax,Mu4CAvg,Mu4CStd"
-                     + ",Mu5InTm,Mu5RtTm,Mu5CMed,Mu5CMax,Mu5CAvg,Mu5CStd"
-                     + ",Mu6InTm,Mu6RtTm,Mu6CMed,Mu6CMax,Mu6CAvg,Mu6CStd")
-
-        # step < -1: open addressing / closed hashing: double hash
-        # step = -1: open addressing / closed hashing: quadratic probing
-        # step =  0: seperate chaining / open hashing
-        # step >  0: open addressing / closed hashing: linear probing
-        for step in range(-5,stepN):
-            # start with a return and step for each new row
-            file.write(f"\n{step}")
-
-            # test different operations in one row
-            for i, op in enumerate(operations):
-                hash_table = HashTable(op[0],op[1],step)
-
-                #Insertion
-                initial_time   = time.time()
-                slot_list      = hash_table.insert(keys)
-                insertion_time = time.time() - initial_time
-    
-                #Retrieval
-                initial_time   = time.time()
-                chain_list     = hash_table.retrieve(keys)
-                retrieval_time = time.time() - initial_time
-    
-                # collision / chain length on every bucket slot
-                df = pandas.DataFrame({'slot':slot_list, 'chain':chain_list})
-                cdf = df.groupby(['slot']).max()
-
-                # one operation completed                
-                file.write(f",{insertion_time:.10f},{retrieval_time:.10f},{cdf.chain.median()},{cdf.chain.max()},{cdf.chain.mean()},{cdf.chain.std()}")
-                print(f"{i} operation completed with {step} step in {r} round.")
-
-            # one row calculation completed            
-            round_time  = time.time() - round_initial_time
-            elapse_time = time.time() - starting_time
-
-            print(f"{r} round {100*(step-stepS+1)/(stepN-stepS):.2f}% completed in {timedelta(seconds=round_time)}. " + 
-                  f"Total rounds {100*((step-stepS+1)+r*(stepN-stepS))/((stepN-stepS)*roundN):.4f}% completed in {timedelta(seconds=elapse_time)}")
         
-        # one round test completed
-        file.close()
+        for ds in range(datasetN): 
+            # reset dataset initial time
+            dataset_initial_time = time.time()
+
+            # create a new raw dataset for each new round
+            keys = [random.randint(1, hk_range[ds]) for i in range(N)]
+
+            # create a new output csv file for each new round
+            file = open(f"/Project/Hash/Hash_{str(hk_range[ds]).zfill(8)}-{str(r).zfill(2)}.csv","a")
+            
+            # first row of output csv file
+            file_header = "step"
+            for hf in hf_list:
+                for bs in range(len(bs_list)):
+                    col = hf + str(bs+1)
+                    file_header += ","+col+"InTm"+","+col+"RtTm"+","+col+"CMed"+","+col+"CMax"+","+col+"CAvg"+","+col+"CStd"
+                    
+            file.write(file_header)
+
+            # step = -8: open addressing / closed hashing: double hash muplicative function with quadratic probing
+            # step = -7: open addressing / closed hashing: double hash modular function with quadratic probing
+            # step = -6: open addressing / closed hashing: faster quadratic probing with a large starting step
+            # step = -5: open addressing / closed hashing: classic quadratic probing with a large starting step
+            # step = -4: open addressing / closed hashing: double hash muplicative function
+            # step = -3: open addressing / closed hashing: double hash modular function
+            # step = -2: open addressing / closed hashing: faster quadratic probing
+            # step = -1: open addressing / closed hashing: classic quadratic probing
+            # step =  0: seperate chaining / open hashing
+            # step >  0: open addressing / closed hashing: linear probing
+            for step in range(stepS, stepN):
+                # start with a return and step for each new row
+                file.write(f"\n{step}")
+
+                # test different operations in one row
+                for hf in hf_list: # hash function
+
+                    for bs in bs_list: # change bucket size (prime number) to have different load factor
+                        hash_table = HashTable(bs, hf, step)
+
+                        # Insertion
+                        initial_time   = time.time()
+                        slot_list      = hash_table.insert(keys)
+                        insertion_time = time.time() - initial_time
+
+                        # Retrieval
+                        initial_time   = time.time()
+                        chain_list     = hash_table.retrieve(keys)
+                        retrieval_time = time.time() - initial_time
+
+                        # collision / chain length on every bucket slot
+                        df = pandas.DataFrame({'slot':slot_list, 'chain':chain_list})
+                        cdf = df.groupby(['slot']).max()
+
+                        # one operation completed                
+                        file.write(f",{insertion_time:.10f},{retrieval_time:.10f},{cdf.chain.median()},{cdf.chain.max()},{cdf.chain.mean()},{cdf.chain.std()}")
+
+                # one step row calculation completed            
+                dataset_percent = 100*(step-stepS+1)/(stepN-stepS)
+                total_percent   = 100*((step-stepS+1)+ds*(stepN-stepS)+r*(stepN-stepS)*datasetN)/((stepN-stepS)*datasetN*roundN)
+                dataset_time    = round( time.time() - dataset_initial_time )
+                total_time      = round( time.time() - starting_time )
+
+                print(f"{step:4d} step in {hk_range[ds]} dataset({ds:2d}/{datasetN:2d}) {dataset_percent:6.2f}% completed in {timedelta(seconds=dataset_time)}. " + 
+                      f"Total {roundN} rounds {total_percent:8.4f}% completed in {timedelta(seconds=total_time)}")
+
+            # one dataset test completed
+            file.close()
+
+            # one dataset file output completed            
+            round_percent = 100*(ds+1)/datasetN
+            total_percent = 100*(ds+1+r*datasetN)/(datasetN*roundN)
+            round_time    = round( time.time() - round_initial_time )
+            total_time    = round( time.time() - starting_time )
+
+            print(f"{hk_range[ds]} datafile output in {r:2d} round {round_percent:6.2f}% completed in {timedelta(seconds=round_time)}. " + 
+                  f"Total {roundN} rounds {total_percent:8.4f}% completed in {timedelta(seconds=total_time)}")
 
 if __name__ == '__main__':
     main()
