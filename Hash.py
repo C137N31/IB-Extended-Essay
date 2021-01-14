@@ -158,11 +158,12 @@ def main():
     hf_list       = ["mod", "mul"] # hash function list
     bs_list       = [9999973, 19993, 11119, 10429, 10039, 10009] # bucket size list
 
-    # repeat test for a group of operations and steps
+    # repeat rounds for average statistics
     for r in range(roundN):
         # reset round initial time
         round_initial_time = time.time()
         
+        # test on different distribution datasets
         for ds in range(datasetN): 
             # reset dataset initial time
             dataset_initial_time = time.time()
@@ -171,7 +172,7 @@ def main():
             keys = [random.randint(1, hk_range[ds]) for i in range(N)]
 
             # create a new output csv file for each new round
-            file = open(f"/Project/Hash/Hash_{str(hk_range[ds]).zfill(8)}-{str(r).zfill(2)}.csv","a")
+            file = open(f"/Project/Hash/Hash_D{str(ds).zfill(2)}-R{str(r).zfill(2)}.csv","a")
             
             # first row of output csv file
             file_header = "step"
@@ -191,14 +192,13 @@ def main():
             # step = -2: open addressing / closed hashing: faster quadratic probing
             # step = -1: open addressing / closed hashing: classic quadratic probing
             # step =  0: seperate chaining / open hashing
-            # step >  0: open addressing / closed hashing: linear probing
+            # step >  0: open addressing / closed hashing:  problinearing
             for step in range(stepS, stepN):
                 # start with a return and step for each new row
                 file.write(f"\n{step}")
 
                 # test different operations in one row
                 for hf in hf_list: # hash function
-
                     for bs in bs_list: # change bucket size (prime number) to have different load factor
                         hash_table = HashTable(bs, hf, step)
 
@@ -221,24 +221,26 @@ def main():
 
                 # one step row calculation completed            
                 dataset_percent = 100*(step-stepS+1)/(stepN-stepS)
+                round_percent   = 100*((step-stepS+1)+ds*(stepN-stepS))/((stepN-stepS)*datasetN)
                 total_percent   = 100*((step-stepS+1)+ds*(stepN-stepS)+r*(stepN-stepS)*datasetN)/((stepN-stepS)*datasetN*roundN)
                 dataset_time    = round( time.time() - dataset_initial_time )
+                round_time      = round( time.time() - round_initial_time )
                 total_time      = round( time.time() - starting_time )
 
-                print(f"{step:4d} step in {hk_range[ds]} dataset({ds:2d}/{datasetN:2d}) {dataset_percent:6.2f}% completed in {timedelta(seconds=dataset_time)}. " + 
-                      f"Total {roundN} rounds {total_percent:8.4f}% completed in {timedelta(seconds=total_time)}")
-
-            # one dataset test completed
-            file.close()
+                print(f"{step:4d} step in dataset({ds+1:2d}/{datasetN}) {dataset_percent:6.2f}% completed in {timedelta(seconds=dataset_time)}. " + 
+                      f"Round({r+1:2d}/{roundN}) {round_percent:6.2f}% completed in {timedelta(seconds=round_time)}. " + 
+                      f"Total {total_percent:8.4f}% completed in {timedelta(seconds=total_time)}")
 
             # one dataset file output completed            
-            round_percent = 100*(ds+1)/datasetN
-            total_percent = 100*(ds+1+r*datasetN)/(datasetN*roundN)
-            round_time    = round( time.time() - round_initial_time )
-            total_time    = round( time.time() - starting_time )
+            file.close()
 
-            print(f"{hk_range[ds]} datafile output in {r:2d} round {round_percent:6.2f}% completed in {timedelta(seconds=round_time)}. " + 
-                  f"Total {roundN} rounds {total_percent:8.4f}% completed in {timedelta(seconds=total_time)}")
+            #round_percent = 100*(ds+1)/datasetN
+            #total_percent = 100*(ds+1+r*datasetN)/(datasetN*roundN)
+            #round_time    = round( time.time() - round_initial_time )
+            #total_time    = round( time.time() - starting_time )
+
+            #print(f"{ds+1:2d}/{datasetN} dataset file output in round({r+1:2d}/{roundN}) {round_percent:6.2f}% completed in {timedelta(seconds=round_time)}. " + 
+            #      f"Total {total_percent:8.4f}% completed in {timedelta(seconds=total_time)}")
 
 if __name__ == '__main__':
     main()
