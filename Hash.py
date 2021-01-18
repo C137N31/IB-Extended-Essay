@@ -172,16 +172,17 @@ def main():
             keys = [random.randint(1, hk_range[ds]) for i in range(N)]
 
             # create a new output csv file for each new round
-            file = open(f"/Project/Hash/Hash_D{str(ds).zfill(2)}-R{str(r).zfill(2)}.csv","a")
+            file = open(f"Hash_D{str(ds).zfill(2)}-R{str(r).zfill(2)}.csv","a")
             
             # first row of output csv file
             file_header = "step,"
             for hf in hf_list:
                 for bs in range(len(bs_list)):
                     col = hf + str(bs+1)
-                    file_header += col+"InTm,"+col+"RtTm,"+col+"CMed,"+col+"CMax,"+col+"CAvg,"+col+"CStd"
+                    file_header += col+"InTm,"+col+"RtTm,"+col+"CMed,"+col+"CMax,"+col+"CAvg,"+col+"CStd,"
                     
-            file.write(file_header)
+            # remove the last comma
+            file.write(file_header[:-1])
 
             # step = -8: open addressing / closed hashing: double hash muplicative function with quadratic probing
             # step = -7: open addressing / closed hashing: double hash modular function with quadratic probing
