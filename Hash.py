@@ -14,7 +14,7 @@ class HashTable: #Hash Table Specification
         self.max_probing = bs # max probing to quit
         
         self.ch = "ch" if step == 0 else "lp" # Collision handling strategy
-        self.mf = (sqrt(5)-1)/2 # (3^40)/(2^64) Use golden ratio as mulplicative factor
+        self.mf = (sqrt(5)-1)/2 # (3^40)/(2^64) Use golden ratio as multiplicative factor
         
         # [] for chaining, None for linear probing
         self.bucket = [[] for generation in range(self.size)] if self.ch == "ch" else [None for generation in range(self.size)]
@@ -61,7 +61,7 @@ class HashTable: #Hash Table Specification
             return j           
         elif self.step == -3 : # double hash modular function   ###    better if self.size and self.size-2 are twin primes
             return 1 + hash_key % (self.size-2)     
-        elif self.step == -4 : # double hash muplicative function
+        elif self.step == -4 : # double hash multiplicative function
             return ceil((self.size-2) * modf(hash_key * self.mf)[0]) 
         elif self.step == -5 : # classic quadratic probing with a large starting step
             return j           
@@ -69,7 +69,7 @@ class HashTable: #Hash Table Specification
             return j           
         elif self.step == -7 : # double hash modular function with quadratic probing
             return 1 + hash_key % (self.size-2) 
-        elif self.step == -8 : # double hash muplicative function with quadratic probing
+        elif self.step == -8 : # double hash multiplicative function with quadratic probing
             return ceil((self.size-2) * modf(hash_key * self.mf)[0])
         else:
             raise Exception(f"Invalid collision handling strategy! Check the step input.")
@@ -184,16 +184,16 @@ def main():
             # remove the last comma
             file.write(file_header[:-1])
 
-            # step = -8: open addressing / closed hashing: double hash muplicative function with quadratic probing
+            # step = -8: open addressing / closed hashing: double hash multiplicative function with quadratic probing
             # step = -7: open addressing / closed hashing: double hash modular function with quadratic probing
             # step = -6: open addressing / closed hashing: faster quadratic probing with a large starting step
             # step = -5: open addressing / closed hashing: classic quadratic probing with a large starting step
-            # step = -4: open addressing / closed hashing: double hash muplicative function
+            # step = -4: open addressing / closed hashing: double hash multiplicative function
             # step = -3: open addressing / closed hashing: double hash modular function
             # step = -2: open addressing / closed hashing: faster quadratic probing
             # step = -1: open addressing / closed hashing: classic quadratic probing
             # step =  0: seperate chaining / open hashing
-            # step >  0: open addressing / closed hashing:  problinearing
+            # step >  0: open addressing / closed hashing: linear probing
             for step in range(stepS, stepN):
                 # start with a return and step for each new row
                 file.write(f"\n{step}")
